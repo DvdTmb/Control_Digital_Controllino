@@ -1,0 +1,135 @@
+#include <Controllino.h>  // Librería del Controllino
+
+// Definición de LEDs en orden espiral
+int leds[9] = {
+  CONTROLLINO_D0, CONTROLLINO_D6, CONTROLLINO_D12,
+  CONTROLLINO_D13, CONTROLLINO_D14, CONTROLLINO_D8,
+  CONTROLLINO_D2, CONTROLLINO_D1, CONTROLLINO_D7
+};
+
+// Definición de botones
+const int boton_1 = CONTROLLINO_I16;  // Espiral normal
+const int boton_2 = CONTROLLINO_I17;  // Espiral inverso
+const int boton_3 = CONTROLLINO_I18;  // Reiniciar
+
+// Variables de tiempo
+unsigned long t_previo = 0;
+unsigned long t_actual = 0;
+unsigned long intervalo = 500;
+
+// Variables de estado
+int contador = 0;
+int* puntero = leds;
+int* led_actual = leds;
+int modo_actual = 0;  // 0=parado, 1=normal, 2=inverso
+
+void setup() {
+  // Configurar todos los LEDs como salida
+  for (int i = 0; i < 9; i++) {
+    pinMode(*(puntero + i), OUTPUT);
+  }
+
+  // Configurar botones como entrada
+  pinMode(boton_1, INPUT);
+  pinMode(boton_2, INPUT);
+  pinMode(boton_3, INPUT);
+  
+  // Inicializar tiempo
+  t_previo = millis();
+}
+
+void loop() {
+  t_actual = millis();
+  
+  // Leer botones y cambiar modo
+  if (digitalRead(boton_1) == HIGH) {
+    if (modo_actual != 1) {
+      modo_actual = 1;
+      reiniciarSecuencia();
+    }
+  } else if (digitalRead(boton_2) == HIGH) {
+    if (modo_actual != 2) {
+      modo_actual = 2;
+      reiniciarSecuencia();
+    }
+  } else if (digitalRead(boton_3) == HIGH) {
+    modo_actual = 0;
+    reiniciar();
+  }
+  
+  // Ejecutar secuencia según el modo actual
+  if (modo_actual == 1) {
+    espiralNormal();
+  } else if (modo_actual == 2) {
+
+    espiralInversa();
+  }
+}
+
+void espiralNormal() {
+  // Encender el LED actual usando el puntero
+  digitalWrite(*led_actual, HIGH); 
+  
+  if (t_actual - t_previo >= intervalo) {
+    t_previo = t_actual;
+    
+
+      digitalWrite(*led_actual, LOW);
+  
+    
+    // Avanzar al siguiente LED
+    contador++;
+    if (contador >= 9) {
+      contador = 0;
+    }
+    
+    // Actualizar puntero al LED actual
+    led_actual = puntero + contador;
+    
+    // Encender nuevo LED
+    digitalWrite(*led_actual, HIGH);
+  }
+}
+
+void espiralInversa() {
+  // Encender el LED actual usando el puntero
+  //digitalWrite(*led_actual, HIGH); 
+  
+  if (t_actual - t_previo >= intervalo) {
+    t_previo = t_actual;
+    
+
+      digitalWrite(*led_actual, LOW);
+
+    
+    // Retroceder al LED anterior
+    contador--;
+    if (contador < 0) {
+      contador = 8;
+    }
+    
+    // Actualizar puntero al LED actual
+    led_actual = puntero + contador;
+    
+    // Encender nuevo LED
+    digitalWrite(*led_actual, HIGH);
+  }
+}
+
+void reiniciar() {
+  // Apagar todos los LEDs
+  for (int i = 0; i < 9; i++) {
+    digitalWrite(*(puntero + i), LOW);
+  }
+  
+}
+
+void reiniciarSecuencia() {
+  // Apagar todos los LEDs
+  reiniciar();
+  
+  // Reiniciar variables
+  contador = 0;
+  led_actual = puntero;
+  t_previo = t_actual;  // Resetear el tiempo para empezar inmediatamente
+}

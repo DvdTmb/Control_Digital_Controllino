@@ -1,0 +1,55 @@
+//Practica 2: Encender todos los leds del tablero secuencialmente usando PUNTEROS
+#include <Controllino.h> // Librería de controllino
+
+int leds[9] = {CONTROLLINO_D0, CONTROLLINO_D6, CONTROLLINO_D12, CONTROLLINO_D13,
+               CONTROLLINO_D14, CONTROLLINO_D8, CONTROLLINO_D2, CONTROLLINO_D1, CONTROLLINO_D7};
+
+int contador = 0;
+unsigned long t_previo = 0;
+unsigned long t_actual = 0;
+unsigned long intervalo = 500;
+  
+// Puntero que apunta al inicio del array
+int* puntero = leds;
+// Puntero que apunta al LED actual
+int* led_actual = leds;
+
+void setup() {
+  pinMode(CONTROLLINO_D0, OUTPUT);  // Salida digital D0
+  pinMode(CONTROLLINO_D1, OUTPUT);  // Salida digital D1
+  pinMode(CONTROLLINO_D2, OUTPUT);  // Salida digital D2
+  pinMode(CONTROLLINO_D6, OUTPUT);  // Salida digital D6
+  pinMode(CONTROLLINO_D7, OUTPUT);  // Salida digital D7
+  pinMode(CONTROLLINO_D8, OUTPUT);  // Salida digital D8
+  pinMode(CONTROLLINO_D12, OUTPUT); // Salida digital D12
+  pinMode(CONTROLLINO_D13, OUTPUT); // Salida digital D13
+  pinMode(CONTROLLINO_D14, OUTPUT); // Salida digital D14
+
+
+}
+
+void loop() {
+  t_actual = millis();
+  
+  // Encender el LED actual usando el puntero
+  digitalWrite(*led_actual, HIGH); 
+  
+  if (t_actual - t_previo >= intervalo) {
+    t_previo = t_actual;
+    
+    // Apagar el LED actual
+    digitalWrite(*led_actual, LOW);
+    
+    // Avanzar al siguiente LED
+    contador++;
+    if (contador >= 9) {
+      contador = 0;
+      led_actual = puntero;  // Volver al inicio del array
+    } else {
+      led_actual++;          // Mover el puntero al siguiente elemento
+    }
+    
+    // Encender el nuevo LED
+    digitalWrite(*led_actual, HIGH);
+  }
+}

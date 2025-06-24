@@ -1,0 +1,203 @@
+#include <Controllino.h>
+#include "Stone_HMI_Define.h" // Librería ofiical de HMI Stone
+#include "Procesar_HMI.h"     // Librería implementada para procesar respuestas del HMI
+
+// VARIABLES PARA DETENER E INICIAR EL PROGRAMA
+const int boton_inicio = CONTROLLINO_I16;
+const int led_inicio = CONTROLLINO_D6;
+
+const int boton_apagado = CONTROLLINO_I17;
+const int led_apagado = CONTROLLINO_D7;
+int bandera=0;
+
+// Definicion de variables para ecuacion de recurrencias PID
+
+float deltaU=0;          // Almacena la señal de control actual
+float u = 0;           // Señal de control para PWM
+float T=0.05;          // Tiempo de muestreo para ecuacion de reccurencias (50ms)
+float Kp = 0.391 ,Ki=1.88, Td = 0;         // Constantes del controlador PID
+//float Kp =0.0.1 ,Ki=0, Td = 0;         // Tiempo derivativo del controlador PID
+
+
+volatile float e[3];          // Array para almacenar los valores de error del controlador PID
+
+// VARIABLES PARA PWM DEL MOTOR
+const int pin_motor        = CONTROLLINO_D0;              // Pin de salida PWM al motor
+int    ref = 0;                                           // Valor leído del slider del HMI
+char label2_text[10];                                     // Char para mostrar el Duty Cycle en el label2 del HMI
+
+// VARIABLES PARA CONTEO DE PULSOS y RPM
+const int entrada                    = CONTROLLINO_IN1;   // Pin de entrada de pulsos
+volatile unsigned long conteo_pulsos = 0;                 // Contador de pulsos
+char label4_text[10];                                     // Char para mostrar las RPM en el label4 del HMI
+float rpm                            = 0;                 // RPM calculadas
+const uint16_t PULSOS_POR_REV        = 36;                // Número de pulsos por revolución (Datos del EPC)
+const float fs                       = 1/T; 
+
+unsigned long t_previo=0;
+unsigned long t_previo1=0;
+
+void contarPulso();
+
+void setup() {
+  Serial.begin(115200);   // Comunicación serial con el PC
+  Serial2.begin(115200);  // Comunicación serial con el HMI
+
+  pinMode(boton_inicio, INPUT);
+  pinMode(led_inicio, OUTPUT);
+
+  pinMode(boton_apagado, INPUT);
+  pinMode(led_apagado, OUTPUT);
+
+  
+  pinMode(entrada, INPUT);
+  pinMode(pin_motor, OUTPUT);
+
+  // Inicializar valores de error a 0
+  e[0] = 0;
+  e[1] = 0;
+  e[2] = 0;
+
+  // Inicializa los valores de las graficas en 0
+  STONE_push_series("line_series", "line_series1", 0); //Envía un valor del eje X a graficar en el line_series1 que se pondrá al final
+  STONE_push_series("line_series", "line_series2", 0); 
+  STONE_push_series("line_series", "line_series3", 0); 
+
+  //Inicializa los valores de spin_box Kp, Ki, Kd: Ki diferente de cero para evitar errores por division con 0
+  Stone_HMI_Set_Value("spin_box", "spin_kp", NULL, 0.01);  // Kd en 0 el valor del spin box1 en el HMI. 
+  Stone_HMI_Set_Value("spin_box", "spin_ki", NULL, 0.01);  // Ki en 0 el valor del spin box2 en el HMI. 
+  Stone_HMI_Set_Value("spin_box", "spin_td", NULL, 0.001); // Ti en 0 el valor del spin box3 en el HMI. 
+
+
+  //Inicializa el deslizador de referencia en 0
+  Stone_HMI_Set_Value("slider", "slider1", NULL, 0);
+
+
+    Stone_HMI_Set_Text("label","label2","0"); // Envía el texto del duty cycle al label2
+    Stone_HMI_Set_Text("label","label4","0"); // Envía el texto de las rpm al label4
+
+
+
+
+
+  //Configuracion de la interrupcion
+  attachInterrupt(digitalPinToInterrupt(entrada), contarPulso, FALLING);
+  noInterrupts();
+  TCCR1A = 0b00000000;     // Todo apagado, modo normal registro A. Counter1 del ATMEGA2560
+  TCCR1B = 0b00000000;     // Todo apagado, modo normal registro B. Coun ter1 del ATMEGA2560
+  TCCR1B |= B00000100;     // Configuración de preescaler a 256 (BIT CS12)
+  TIMSK1 |= B00000010;     // Habilitar interrupción por comparación usando el registro TIMSK1 (modo CTC)
+  OCR1A = 3125; // Establecer valor TOP para generar interrupción cada 1 segundo (valor a comparar calculado)
+  interrupts();
+  HMI_init(); // Inicialización del sistema de colas para procesar las respuestas del HMI
+}
+
+
+
+void loop() {
+   if (digitalRead(boton_inicio) == HIGH) {
+    digitalWrite(led_inicio, HIGH);
+    digitalWrite(led_apagado, LOW);
+    bandera = 1;
+   }
+
+   if (digitalRead(boton_apagado) == HIGH) {
+    digitalWrite(led_apagado, HIGH);
+    digitalWrite(led_inicio, LOW);
+    bandera = 0;
+   analogWrite(pin_motor, 0);
+   }
+
+
+  if(millis()-t_previo1>=10 && bandera == 1){
+    ref= HMI_get_value("slider", "slider1");  // Solicita el valor del widget slider1ref
+    int pwmValue = map(ref, 0, 100, 0, 255);  // COnversion del duty cycle
+
+    Kp= HMI_get_value("spin_box", "spin_kp")/100;  // Solicita el valor del widget spin_box1 (Kp)
+    Td= HMI_get_value("spin_box", "spin_td")/100;  // Solicita el valor del widget spin_box3 (Kd)
+    Ki= HMI_get_value("spin_box", "spin_ki")/100;  // Solicita el valor del widget spin_box2 (Ki)
+    
+    t_previo1=millis();
+  }
+  
+  if(millis()-t_previo>=100 && bandera==1){
+    t_previo=millis();
+    dtostrf(ref, 7, 2, label2_text);                  // Convertir float a char
+    dtostrf(rpm, 7, 2, label4_text);                  // Convertir float a char
+    Stone_HMI_Set_Text("label","label2",label2_text); // Envía el texto del duty cycle al label2
+    Stone_HMI_Set_Text("label","label4",label4_text); // Envía el texto de las rpm al label4
+
+    //Envía un valor del eje X a graficar en el line_series1 que se pondrá al final
+    STONE_push_series("line_series", "line_series1", ref); //graficar referencia     
+    
+    //Envía un valor del eje X a graficar en el line_series2 que se pondrá al final
+    STONE_push_series("line_series", "line_series2", rpm); //graficar rpms
+
+    //Envía un valor del eje X a graficar en el line_series3 que se pondrá al final
+    STONE_push_series("line_series", "line_series3", (int)u); //graficar señal de control
+    
+  }
+}
+
+// Interrupción por TIMER1 para muestrear las RPM debido a que la librería del HMI se demora mucho
+ISR(TIMER1_COMPA_vect){     
+  if (bandera==1){
+  TCNT1=0;          // Resetea el timer (Timer 1 a cero)
+
+  // Calcular RPM (pulsos por segundo / pulsos por revolución) * 60
+  rpm = (float(conteo_pulsos)*60)*fs / (PULSOS_POR_REV);
+
+   // Actualizar valores de error para el controlador PID
+    e[2] = e[1];
+    e[1] = e[0];
+    e[0] = ref - rpm; //calcular error actual
+
+
+  if (Ki > 0){
+    // Ecuacion de recurrencias del controlador PID
+    deltaU = Kp * (e[0] - e[1] + T  / (Kp/Ki) * e[0] + Td / T * (e[0] - 2 * e[1] + e[2]));
+  }
+    
+    // Actualizar la señal de control
+    u +=deltaU;
+
+    // Restringir la señal de control al rango válido de PWM (0-255)
+    if (u > 255){
+      u = 255;
+      }
+    if (u < 0){
+      u = 0;
+    }
+      
+
+    //Escribir la senal de control PWM al pin del motor
+    analogWrite(pin_motor, (int)u);
+  
+  // Mostrar los datos en el monitor serial
+  Serial.print("\nRPM: ");
+  Serial.println(rpm);
+  Serial.print("Pulsos: ");
+  Serial.println(conteo_pulsos);
+  Serial.print("Referencia: ");
+  Serial.println(ref);
+  Serial.print("Señal de control U: ");
+  Serial.println(u);
+  Serial.print("Delta_U: ");
+  Serial.println(deltaU);
+
+  Serial.print("Kp: ");
+  Serial.println(Kp);
+  Serial.print("ki: ");
+  Serial.println(Ki);
+  Serial.print("Td: ");
+  Serial.println(Td);
+
+
+  conteo_pulsos=0;  // Resetea los pulsos }
+  }
+}
+
+// Interrupción por Hardware para contar los pulsos del motor
+void contarPulso() {
+  conteo_pulsos++;  // Incrementar contador al detectar pulso
+}
