@@ -18,4 +18,5 @@ En esta práctica se implementa el control de salidas digitales mediante una **m
 
 ## Archivos incluidos
 
-- `/Codigo/Practica2.ino`: Código fuente con la implementación de ambas partes usando FSM.
+- `P2_RETO_A.ino`: Código fuente con la implementación de ambas partes usando FSM.
+- `P2_RETO_B.ino`: Código fuente con la implementación de ambas partes usando FSM.
