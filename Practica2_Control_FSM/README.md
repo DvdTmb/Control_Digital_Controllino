@@ -1,27 +1,21 @@
-# Práctica 2: Control FSM con Controllino Mega
+# Práctica 2: Control con Máquina de Estados Finita (FSM) usando Controllino Mega
 
-Implementación de un control mediante máquina de estados finita (FSM):
-- 2 botones controlan encendido/apagado de un LED.
+## Descripción
+En esta práctica se implementa el control de salidas digitales mediante una **máquina de estados finita (FSM)** con dos enfoques:
 
-## Objetivo:
-Comprender FSM, uso de `if`, `switch`, manejo de entradas digitales.
+- **Parte A:** Control de un arreglo de LEDs en matriz 3x3 mediante 3 botones.
+- **Parte B:** Simulación del comportamiento de dos semáforos ubicados en una intersección perpendicular.
 
-## Archivos:
-- Practica2.ino: Código de FSM.
+---
 
-## Instrucciones:
--Parte A
-Utilizar los tres botones del tablero de pruebas para controlar el patrón de
-encendido de los LED ubicados en forma de matriz 3x3. Tanto los botones
-como los LED ya se encuentran conectados directamente al Controllino
-Mega.
-–- Botón 1: Encendido en espiral normal.
-–- Botón 2: Encendido en espiral inverso.
-–- Botón 3: Reinicia y apaga todos los LEDs.
--Parte B
-Diseñar un sistema que controle dos semáforos (Semáforo A y Semáforo B)
-ubicados en una intersección perpendicular (Figura 18), usando el enfoque de
-máquina de estados finita (FSM). El sistema debe simular el comportamiento
-simple de los semáforos, de manera que nunca haya luz verde simultánea
-para ambos sentidos, y se respeten los tiempos estándar de duración de
-cada luz.
+## Objetivo
+
+- Aplicar el concepto de FSM para controlar múltiples salidas de forma secuencial.
+- Comprender el uso de múltiples entradas (botones) para manejar diferentes modos de operación.
+- Simular un sistema real de semáforos respetando condiciones de seguridad vial.
+
+---
+
+## Archivos incluidos
+
+- `/Codigo/Practica2.ino`: Código fuente con la implementación de ambas partes usando FSM.
