@@ -210,14 +210,6 @@ void apagarTodosLEDs() {
 - **Reutilización**: Las funciones pueden ser llamadas desde múltiples lugares
 - **Mantenimiento**: Facilita la depuración y modificación
 
-## Posibles Extensiones
-
-1. **Sensor de tráfico**: Ajustar tiempos según densidad vehicular
-2. **Modo nocturno**: Cambiar a parpadeo amarillo en horarios específicos
-3. **Control manual**: Botón de emergencia para control manual
-4. **Comunicación**: Interface para monitoreo remoto
-5. **Peatones**: Integración de semáforos peatonales
-
 ## Conclusiones
 
 Este sistema demuestra:
